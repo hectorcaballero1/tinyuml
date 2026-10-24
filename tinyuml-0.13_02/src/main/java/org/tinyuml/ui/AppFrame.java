@@ -672,7 +672,7 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
    */
   public void cut(){
 	  copy();
-	  delete();
+	  getCurrentEditor().deleteSelectionWithoutConfirmation();
 	  selectionStateChanged();
   }
   /**

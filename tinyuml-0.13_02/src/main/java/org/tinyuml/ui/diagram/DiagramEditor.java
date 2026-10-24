@@ -34,6 +34,7 @@ import java.awt.geom.Dimension2D;
 import java.awt.geom.Point2D;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -41,6 +42,7 @@ import java.util.List;
 import javax.swing.AbstractAction;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
 import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
@@ -78,6 +80,7 @@ import org.tinyuml.ui.diagram.commands.SetConnectionNavigabilityCommand;
 import org.tinyuml.umldraw.shared.UmlConnection;
 import org.tinyuml.umldraw.structure.Association;
 import org.tinyuml.umldraw.structure.ClassElement;
+import org.tinyuml.util.ApplicationResources;
 import org.tinyuml.util.Command;
 
 /**
@@ -247,11 +250,34 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
   }
 
   /**
-   * Removes the current selection.
+   * Removes the current selection. If more than one element is selected,
+   * the user is asked for confirmation first.
    */
   public void deleteSelection() {
+    int count = getSelectedElements().size();
+    if (count > 1 && !confirmDelete(count)) return;
+    deleteSelectionWithoutConfirmation();
+  }
+
+  /**
+   * Removes the current selection without asking for confirmation.
+   */
+  public void deleteSelectionWithoutConfirmation() {
     Collection<DiagramElement> elements = getSelectedElements();
     execute(new DeleteElementCommand(this, elements));
+  }
+
+  /**
+   * Asks the user to confirm the removal of the specified number of elements.
+   * @param count the number of elements to remove
+   * @return true if the user confirmed, false otherwise
+   */
+  private boolean confirmDelete(int count) {
+    String message = MessageFormat.format(ApplicationResources.getInstance()
+      .getString("confirm.delete.message"), count);
+    return JOptionPane.showConfirmDialog(frame, message,
+      ApplicationResources.getInstance().getString("confirm.delete.title"),
+      JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION;
   }
   /**
    * Pastes into this diagram the handed Elements
