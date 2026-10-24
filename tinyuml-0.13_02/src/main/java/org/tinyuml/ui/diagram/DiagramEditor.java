@@ -32,6 +32,7 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.Dimension2D;
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.text.MessageFormat;
@@ -44,10 +45,13 @@ import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
+import javax.swing.JViewport;
+import javax.swing.SwingUtilities;
 import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.UndoManager;
 import org.tinyuml.draw.Connection;
+import org.tinyuml.draw.AbstractCompositeNode;
 import org.tinyuml.model.RelationType;
 import org.tinyuml.draw.DiagramOperations;
 import org.tinyuml.draw.DiagramElement;
@@ -109,6 +113,9 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
   private transient List<UndoableEditListener> editListeners =
     new ArrayList<UndoableEditListener>();
   private transient Scaling scaling = Scaling.SCALING_100;
+  private double viewOffsetX;
+  private double viewOffsetY;
+  private boolean zoomToFitActive;
 
   /**
    * Reset the transient values for serialization.
@@ -133,6 +140,9 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
     editorMode = selectionHandler;
     mouseEvent = new EditorMouseEvent();
     scaling = Scaling.SCALING_100;
+    viewOffsetX = 0;
+    viewOffsetY = 0;
+    zoomToFitActive = false;
   }
 
   /**
@@ -207,6 +217,14 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
    * This also influences the scroll pane which the component is contained in.
    */
   private void setToDiagramSize() {
+    if (zoomToFitActive) {
+      Dimension viewportSize = getViewportSize();
+      if (viewportSize.width > 0 && viewportSize.height > 0) {
+        setPreferredSize(viewportSize);
+      }
+      revalidate();
+      return;
+    }
     setPreferredSize(new Dimension(
       (int) (diagram.getSize().getWidth() + MARGIN_RIGHT + MARGIN_LEFT),
       (int) (diagram.getSize().getHeight() + MARGIN_BOTTOM + MARGIN_TOP)));
@@ -297,9 +315,9 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
 		clonedElements.put(elem, copia);
 	}
 	
-	// hasta aquí tengo el hash de cada objeto con su clon (del nuevo diagrama)
+	// hasta aquï¿½ tengo el hash de cada objeto con su clon (del nuevo diagrama)
 	// ahora debo iterar por cada Connection en elements y rehacer sus conexiones
-	// tomaré el ejemplo desde PasteElementCommand.
+	// tomarï¿½ el ejemplo desde PasteElementCommand.
 	for(DiagramElement elem : elements){
 		if(elem instanceof Connection){
 			Connection currentConnection = (Connection)elem;
@@ -425,6 +443,7 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
    */
   private void scaleDiagram(Graphics2D g2d) {
     double scaleFactor = scaling.getScaleFactor();
+    g2d.translate(viewOffsetX, viewOffsetY);
     g2d.scale(scaleFactor, scaleFactor);
   }
 
@@ -543,7 +562,7 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
    * @return the converted event
    */
   private EditorMouseEvent convertMouseEvent(MouseEvent e) {
-    mouseEvent.setMouseEvent(e, scaling);
+    mouseEvent.setMouseEvent(e, scaling, viewOffsetX, viewOffsetY);
     return mouseEvent;
   }
 
@@ -620,7 +639,70 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
    */
   public void setScaling(Scaling aScaling) {
     scaling = aScaling;
+    viewOffsetX = 0;
+    viewOffsetY = 0;
+    zoomToFitActive = false;
+    setToDiagramSize();
     repaint();
+  }
+
+  /**
+   * Fits the diagram elements into the visible editor area.
+   */
+  public void zoomToFit() {
+    Dimension viewportSize = getViewportSize();
+    if (viewportSize.width <= 0 || viewportSize.height <= 0) {
+      return;
+    }
+
+    Rectangle2D elementBounds = null;
+    for (DiagramElement element : diagram.getChildren()) {
+      elementBounds = getElementBounds(element, elementBounds);
+    }
+    if (elementBounds == null) {
+      elementBounds = diagram.getAbsoluteBounds();
+    }
+
+    double availableWidth = Math.max(1, viewportSize.width - 40);
+    double availableHeight = Math.max(1, viewportSize.height - 40);
+    double boundsWidth = Math.max(1, elementBounds.getWidth());
+    double boundsHeight = Math.max(1, elementBounds.getHeight());
+    double scaleFactor = Math.min(availableWidth / boundsWidth,
+      availableHeight / boundsHeight);
+
+    scaling = Scaling.of(scaleFactor);
+    viewOffsetX = (viewportSize.width - boundsWidth * scaleFactor) / 2 -
+      elementBounds.getX() * scaleFactor;
+    viewOffsetY = (viewportSize.height - boundsHeight * scaleFactor) / 2 -
+      elementBounds.getY() * scaleFactor;
+    zoomToFitActive = true;
+    setPreferredSize(viewportSize);
+    revalidate();
+    repaint();
+  }
+
+  private Rectangle2D getElementBounds(DiagramElement element,
+    Rectangle2D bounds) {
+    Rectangle2D elementBounds = element.getAbsoluteBounds();
+    Rectangle2D result = bounds == null ? elementBounds :
+      bounds.createUnion(elementBounds);
+    if (element instanceof AbstractCompositeNode) {
+      for (DiagramElement child :
+          ((AbstractCompositeNode) element).getChildren()) {
+        result = getElementBounds(child, result);
+      }
+    }
+    return result;
+  }
+
+  private Dimension getViewportSize() {
+    JViewport viewport = (JViewport) SwingUtilities.getAncestorOfClass(
+      JViewport.class, this);
+    if (viewport != null) {
+      return viewport.getExtentSize();
+    }
+    Dimension size = getSize();
+    return size.width > 0 && size.height > 0 ? size : getPreferredSize();
   }
 
   /**

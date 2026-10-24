@@ -109,6 +109,8 @@ public class MenuManager implements ActionListener {
   private void createViewMenu() {
     JMenu viewMenu = createMenu("view");
     menubar.add(viewMenu);
+    createMenuItem(viewMenu, "zoom_to_fit");
+    viewMenu.addSeparator();
     JRadioButtonMenuItem zoom50 = createRadioMenuItem(viewMenu, "zoom_50");
     JRadioButtonMenuItem zoom75 = createRadioMenuItem(viewMenu, "zoom_75");
     JRadioButtonMenuItem zoom100 = createRadioMenuItem(viewMenu, "zoom_100");
