@@ -171,7 +171,7 @@ public class NodeSelection implements Selection, NodeChangeListener {
    * @param x the x coordinate
    * @param y the y coordinate
    */
-  private void moveSelectedNode(double x, double y) {
+  protected void moveSelectedNode(double x, double y) {
     DiagramElement elem = editor.getDiagram().getChildAt(x, y);
     if (isDraggedToANewParent(elem)) {
       reparentNode((CompositeNode) elem);

@@ -51,6 +51,12 @@ public class DiagramSelection extends NodeSelection {
    * {@inheritDoc}
    */
   @Override
+  protected void moveSelectedNode(double x, double y) { }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   protected void resizeNw(double diffx, double diffy) { }
 
   /**
