@@ -13,6 +13,8 @@ Platform
 --------
 At least Java SE 6 is required to compile and execute the application.
 
+:)
+
 Starting the software
 ---------------------
 The application is delivered as an executable jar file, so on many systems,
