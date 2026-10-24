@@ -457,6 +457,7 @@ DiagramEditorNotification, DiagramOperations, NodeChangeListener {
       SetLabelTextCommand command = new SetLabelTextCommand(label, text);
       execute(command);
       currentEditor.hideEditor();
+      notifyStateChanged();
       repaint();
       return true;
     }

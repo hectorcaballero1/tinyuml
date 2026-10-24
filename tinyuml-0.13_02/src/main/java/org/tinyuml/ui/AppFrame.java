@@ -30,12 +30,15 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import javax.swing.BorderFactory;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -51,10 +54,16 @@ import org.tinyuml.draw.Label;
 import org.tinyuml.draw.DiagramElement;
 import org.tinyuml.draw.LabelChangeListener;
 import org.tinyuml.model.UmlModel;
+import org.tinyuml.model.UmlModelElement;
 import org.tinyuml.util.AppCommandListener;
+import org.tinyuml.umldraw.shared.NoteConnection;
 import org.tinyuml.umldraw.shared.NoteElement;
+import org.tinyuml.umldraw.shared.UmlDiagramElement;
+import org.tinyuml.umldraw.structure.Association;
 import org.tinyuml.umldraw.structure.ClassElement;
 import org.tinyuml.umldraw.structure.ComponentElement;
+import org.tinyuml.umldraw.structure.Dependency;
+import org.tinyuml.umldraw.structure.Inheritance;
 import org.tinyuml.umldraw.structure.PackageElement;
 import org.tinyuml.umldraw.structure.StructureDiagram;
 import org.tinyuml.model.UmlModelImpl;
@@ -85,6 +94,7 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
   private JTabbedPane tabbedPane;
   private JLabel coordLabel = new JLabel("    ");
   private JLabel itemCountLabel = new JLabel("    ");
+  private JLabel selectionLabel = new JLabel("    ");
   private JLabel memLabel = new JLabel("    ");
   private UmlModel umlModel;
   private DiagramEditor currentEditor;
@@ -203,6 +213,7 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
     currentEditor.addAppCommandListener(editorDispatcher);
     currentEditor.addAppCommandListener(this);
     updateItemCountStatus(currentEditor);
+    updateSelectionStatus(currentEditor);
     JScrollPane spane = new JScrollPane(currentEditor);
     JPanel editorPanel = new JPanel(new BorderLayout());
     spane.getVerticalScrollBar().setUnitIncrement(10);
@@ -247,8 +258,13 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
    */
   private void installStatusbar() {
     JPanel statusbar = new JPanel(new BorderLayout());
+    JPanel infoPanel = new JPanel(new BorderLayout());
+    itemCountLabel.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 0));
+    selectionLabel.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 0));
+    infoPanel.add(itemCountLabel, BorderLayout.WEST);
+    infoPanel.add(selectionLabel, BorderLayout.CENTER);
     statusbar.add(coordLabel, BorderLayout.WEST);
-    statusbar.add(itemCountLabel, BorderLayout.CENTER);
+    statusbar.add(infoPanel, BorderLayout.CENTER);
     statusbar.add(memLabel, BorderLayout.EAST);
     getContentPane().add(statusbar, BorderLayout.SOUTH);
   }
@@ -284,6 +300,7 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
   public void stateChanged(DiagramEditor editor) {
     updateMenuAndToolbars(editor);
     updateItemCountStatus(editor);
+    updateSelectionStatus(editor);
   }
 
   /**
@@ -362,6 +379,62 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
     return counts;
   }
 
+  /**
+   * Updates the status bar with the category and name of the selected element.
+   * @param editor the editor
+   */
+  private void updateSelectionStatus(DiagramEditor editor) {
+    List<DiagramElement> selected = editor.getSelectedElements();
+    // clicking on an empty area selects the diagram itself, which is not an
+    // element of the diagram
+    if (selected.isEmpty() || selected.get(0) == editor.getDiagram()) {
+      selectionLabel.setText(getResourceString("status.selection.none"));
+    } else if (selected.size() > 1) {
+      selectionLabel.setText(MessageFormat.format(
+        getResourceString("status.selection.multiple"), selected.size()));
+    } else {
+      DiagramElement element = selected.get(0);
+      String name = getElementName(element);
+      selectionLabel.setText(name.length() == 0 ? getCategoryName(element) :
+        getCategoryName(element) + ": " + name);
+    }
+  }
+
+  /**
+   * Returns the category of the specified element.
+   * @param element the diagram element
+   * @return the category name
+   */
+  private String getCategoryName(DiagramElement element) {
+    if (element instanceof PackageElement) return "Package";
+    if (element instanceof ClassElement) return "Class";
+    if (element instanceof ComponentElement) return "Component";
+    if (element instanceof NoteElement) return "Note";
+    if (element instanceof Association) return "Association";
+    if (element instanceof Dependency) return "Dependency";
+    if (element instanceof Inheritance) return "Inheritance";
+    if (element instanceof NoteConnection) return "Note connection";
+    return element.getClass().getSimpleName();
+  }
+
+  /**
+   * Returns the name of the specified element. Notes do not have a name, so
+   * the first line of their text is used instead.
+   * @param element the diagram element
+   * @return the name, or an empty string if the element has none
+   */
+  private String getElementName(DiagramElement element) {
+    String name = null;
+    if (element instanceof NoteElement) {
+      name = ((NoteElement) element).getLabelText();
+      if (name != null) name = name.split("\n")[0];
+    } else if (element instanceof UmlDiagramElement) {
+      UmlModelElement model = ((UmlDiagramElement) element).getModelElement();
+      if (model != null) name = model.getName();
+    }
+    return name == null ? "" : name.trim();
+  }
+
   // ************************************************************************
   // **** SelectionListener
   // *****************************************
@@ -381,6 +454,8 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
     toolbarmanager.enableButton("COPY", hasSelection);
      
     toolbarmanager.enableButton("DELETE", hasSelection);
+
+    updateSelectionStatus(getCurrentEditor());
   }
 
   // ************************************************************************
