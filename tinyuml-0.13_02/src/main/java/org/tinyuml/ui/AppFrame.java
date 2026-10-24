@@ -23,6 +23,7 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -94,6 +95,7 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
   private JTabbedPane tabbedPane;
   private JLabel coordLabel = new JLabel("    ");
   private JLabel itemCountLabel = new JLabel("    ");
+  private JLabel selectedCountLabel = new JLabel("    ");
   private JLabel selectionLabel = new JLabel("    ");
   private JLabel memLabel = new JLabel("    ");
   private UmlModel umlModel;
@@ -213,6 +215,7 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
     currentEditor.addAppCommandListener(editorDispatcher);
     currentEditor.addAppCommandListener(this);
     updateItemCountStatus(currentEditor);
+    updateSelectedCountStatus(currentEditor);
     updateSelectionStatus(currentEditor);
     JScrollPane spane = new JScrollPane(currentEditor);
     JPanel editorPanel = new JPanel(new BorderLayout());
@@ -259,9 +262,13 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
   private void installStatusbar() {
     JPanel statusbar = new JPanel(new BorderLayout());
     JPanel infoPanel = new JPanel(new BorderLayout());
+    JPanel countsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     itemCountLabel.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 0));
+    selectedCountLabel.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 0));
     selectionLabel.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 0));
-    infoPanel.add(itemCountLabel, BorderLayout.WEST);
+    countsPanel.add(itemCountLabel);
+    countsPanel.add(selectedCountLabel);
+    infoPanel.add(countsPanel, BorderLayout.WEST);
     infoPanel.add(selectionLabel, BorderLayout.CENTER);
     statusbar.add(coordLabel, BorderLayout.WEST);
     statusbar.add(infoPanel, BorderLayout.CENTER);
@@ -300,6 +307,7 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
   public void stateChanged(DiagramEditor editor) {
     updateMenuAndToolbars(editor);
     updateItemCountStatus(editor);
+    updateSelectedCountStatus(editor);
     updateSelectionStatus(editor);
   }
 
@@ -380,14 +388,37 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
   }
 
   /**
+   * Returns the elements selected in the specified editor. Clicking on an
+   * empty area selects the diagram itself, which is not an element of the
+   * diagram, so in that case an empty list is returned.
+   * @param editor the editor
+   * @return the selected elements
+   */
+  private List<DiagramElement> getSelectedDiagramElements(
+    DiagramEditor editor) {
+    List<DiagramElement> selected = editor.getSelectedElements();
+    if (selected.size() == 1 && selected.get(0) == editor.getDiagram()) {
+      return new LinkedList<DiagramElement>();
+    }
+    return selected;
+  }
+
+  /**
+   * Updates the status bar with the number of selected elements.
+   * @param editor the editor
+   */
+  private void updateSelectedCountStatus(DiagramEditor editor) {
+    selectedCountLabel.setText(String.format("Selected: %02d",
+      getSelectedDiagramElements(editor).size()));
+  }
+
+  /**
    * Updates the status bar with the category and name of the selected element.
    * @param editor the editor
    */
   private void updateSelectionStatus(DiagramEditor editor) {
-    List<DiagramElement> selected = editor.getSelectedElements();
-    // clicking on an empty area selects the diagram itself, which is not an
-    // element of the diagram
-    if (selected.isEmpty() || selected.get(0) == editor.getDiagram()) {
+    List<DiagramElement> selected = getSelectedDiagramElements(editor);
+    if (selected.isEmpty()) {
       selectionLabel.setText(getResourceString("status.selection.none"));
     } else if (selected.size() > 1) {
       selectionLabel.setText(MessageFormat.format(
@@ -455,6 +486,7 @@ implements EditorStateListener, AppCommandListener, SelectionListener {
      
     toolbarmanager.enableButton("DELETE", hasSelection);
 
+    updateSelectedCountStatus(getCurrentEditor());
     updateSelectionStatus(getCurrentEditor());
   }
 
