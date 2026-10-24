@@ -66,6 +66,8 @@ public class EditorCommandDispatcher implements AppCommandListener {
         DiagramEditor.class.getMethod("undo")));
       selectorMap.put("REDRAW", new MethodCall(
         DiagramEditor.class.getMethod("redraw")));
+      selectorMap.put("ZOOM_TO_FIT", new MethodCall(
+        DiagramEditor.class.getMethod("zoomToFit")));
       selectorMap.put("ZOOM_50", new MethodCall(
         DiagramEditor.class.getMethod("setScaling", Scaling.class),
           Scaling.SCALING_50));

@@ -43,6 +43,19 @@ public final class Scaling {
   }
 
   /**
+   * Creates a scaling for a dynamically calculated zoom level.
+   * @param scaleFactor the scale factor
+   * @return the scaling
+   */
+  public static Scaling of(double scaleFactor) {
+    if (scaleFactor <= 0 || Double.isNaN(scaleFactor) ||
+        Double.isInfinite(scaleFactor)) {
+      throw new IllegalArgumentException("Scale factor must be positive");
+    }
+    return new Scaling(scaleFactor);
+  }
+
+  /**
    * Returns the scaling factor.
    * @return the scaling factor
    */

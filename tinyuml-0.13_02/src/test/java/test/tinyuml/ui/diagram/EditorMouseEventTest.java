@@ -70,4 +70,18 @@ public class EditorMouseEventTest extends TestCase {
     assertTrue(evt.isMainButton());
     assertEquals(event2, evt.getMouseEvent());
   }
+
+  /**
+   * Tests coordinate conversion with a scaled and translated view.
+   */
+  public void testCoordinatesWithViewOffset() {
+    Component comp = new JLabel();
+    MouseEvent event = new MouseEvent(comp, MouseEvent.MOUSE_MOVED,
+      System.currentTimeMillis(), 0, 134, 312, 0, false);
+    EditorMouseEvent evt = new EditorMouseEvent();
+    evt.setMouseEvent(event, Scaling.of(0.5), 10, 20);
+
+    assertTrue(Math.abs(evt.getX() - 248) < EPS);
+    assertTrue(Math.abs(evt.getY() - 584) < EPS);
+  }
 }
